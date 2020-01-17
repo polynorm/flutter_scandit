@@ -3,10 +3,14 @@ package za.co.palota.flutter_scandit;
 import android.app.Activity;
 import android.content.Intent;
 import android.util.Log;
+import androidx.annotation.NonNull;
 
 import com.scandit.datacapture.barcode.data.Symbology;
 
-import io.flutter.app.FlutterActivity;
+import io.flutter.embedding.engine.plugins.activity.ActivityAware;
+import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding;
+import io.flutter.embedding.engine.plugins.FlutterPlugin;
+import io.flutter.plugin.common.BinaryMessenger;
 import io.flutter.plugin.common.MethodCall;
 import io.flutter.plugin.common.MethodChannel;
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler;
@@ -15,14 +19,12 @@ import io.flutter.plugin.common.PluginRegistry.ActivityResultListener;
 import io.flutter.plugin.common.PluginRegistry.Registrar;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
-/** FlutterScanditPlugin */
-public class FlutterScanditPlugin implements MethodCallHandler, ActivityResultListener {
+/** FlutterScanditPlugin x */
+public class FlutterScanditPlugin implements FlutterPlugin, ActivityAware, MethodCallHandler, ActivityResultListener {
   private static final String TAG = FlutterScanditPlugin.class.getSimpleName();
   private static final String PLUGIN_CHANNEL = "flutter_scandit";
   private static final int BARCODE_CAPTURE_CODE = 1111;
@@ -34,21 +36,65 @@ public class FlutterScanditPlugin implements MethodCallHandler, ActivityResultLi
 
   private static FlutterScanditPlugin instance;
   private static Activity activity;
+  private static boolean IsAttached = false;
   private static Result pendingResult;
+  private MethodChannel methodChannel;
 
-  private final Registrar registrar;
+  @Override
+  public void onAttachedToEngine(@NonNull FlutterPluginBinding binding) {
+    this.onAttachedToEngine(binding.getBinaryMessenger());
+  }
 
-  private FlutterScanditPlugin(FlutterActivity activity, final Registrar registrar) {
-    FlutterScanditPlugin.activity = activity;
-    this.registrar = registrar;
+  private void onAttachedToEngine(BinaryMessenger messenger) {
+    final MethodChannel methodChannel = new MethodChannel(
+            messenger,
+            PLUGIN_CHANNEL
+    );
+    methodChannel.setMethodCallHandler(this);
+  }
+
+  @Override
+  public void onDetachedFromEngine(@NonNull FlutterPluginBinding binding) {
+    methodChannel.setMethodCallHandler(null);
+    methodChannel = null;
+  }
+
+  @Override
+  public void onAttachedToActivity(ActivityPluginBinding binding) {
+    FlutterScanditPlugin.activity = binding.getActivity();
+    if (!FlutterScanditPlugin.IsAttached) {
+      binding.addActivityResultListener(this);
+      FlutterScanditPlugin.IsAttached = true;
+    }
+  }
+
+  @Override
+  public void onDetachedFromActivity() {
+    FlutterScanditPlugin.activity = null;
+    FlutterScanditPlugin.IsAttached = false;
+  }
+
+  @Override
+  public void onReattachedToActivityForConfigChanges(ActivityPluginBinding binding) {
+    FlutterScanditPlugin.activity = binding.getActivity();
+    if (!FlutterScanditPlugin.IsAttached) {
+      binding.addActivityResultListener(this);
+      FlutterScanditPlugin.IsAttached = true;
+    }
+  }
+
+  @Override
+  public void onDetachedFromActivityForConfigChanges() {
+    FlutterScanditPlugin.activity = null;
+    FlutterScanditPlugin.IsAttached = false;
   }
 
   /** Plugin registration. */
   public static void registerWith(Registrar registrar) {
-    final MethodChannel channel = new MethodChannel(registrar.messenger(), PLUGIN_CHANNEL);
-    instance = new FlutterScanditPlugin((FlutterActivity)registrar.activity(), registrar);
+    Log.w("eshoppp", "registerWith");
+    instance = new FlutterScanditPlugin();
+    instance.onAttachedToEngine(registrar.messenger());
     registrar.addActivityResultListener(instance);
-    channel.setMethodCallHandler(instance);
   }
 
   @Override
@@ -174,3 +220,4 @@ public class FlutterScanditPlugin implements MethodCallHandler, ActivityResultLi
     }
   }
 }
+
